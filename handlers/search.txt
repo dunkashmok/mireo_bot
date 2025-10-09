@@ -1,0 +1,49 @@
+def get_target_gender(user_gender: str) -> str:
+    """Определяет противоположный пол для поиска с учетом смайликов 🥷 и 💅"""
+    if not user_gender:
+        return ""
+    
+    user_gender_lower = user_gender.lower()
+    
+    # Все возможные варианты для парня (включая смайлик 🥷)
+    if any(word in user_gender_lower for word in ["парень", "парен", "мужск", "мальчик", "🥷"]):
+        # Возвращаем формат для поиска девушек (со смайликом 💅)
+        return "Я девушка 💅"
+    
+    # Все возможные варианты для девушки (включая смайлик 💅)  
+    elif any(word in user_gender_lower for word in ["девушка", "девушку", "женск", "девочка", "💅"]):
+        # Возвращаем формат для поиска парней (со смайликом 🥷)
+        return "Я парень 🥷"
+    
+    return ""
+
+async def show_unread_superlikes(update: Update, context: ContextTypes.DEFAULT_TYPE, superlikes: list):
+    """Показывает непрочитанные суперлайки"""
+    for superlike in superlikes:
+        from_user_id = superlike['from_user_id']
+        from_user_profile = db.get_profile(from_user_id)
+        
+        if from_user_profile:
+            message = (
+                f"⭐ ВАМ СУПЕРЛАЙК! ⭐\n\n"
+                f"От: {from_user_profile.get('name')}, {from_user_profile.get('age')}, {from_user_profile.get('city')}\n"
+                f"💌 Сообщение: {superlike['message']}\n\n"
+                f"💕 Кто-то очень заинтересован в знакомстве с тобой!"
+            )
+            
+            # Отправляем фото если есть
+            if from_user_profile.get('photos'):
+                caption = f"{from_user_profile.get('city')}, {from_user_profile.get('age')}, {from_user_profile.get('name')}"
+                media_group = []
+                for i, photo_id in enumerate(from_user_profile['photos']):
+                    if i == 0:
+                        media_group.append(InputMediaPhoto(media=photo_id, caption=caption))
+                    else:
+                        media_group.append(InputMediaPhoto(media=photo_id))
+                
+                await update.message.reply_media_group(media=media_group)
+            
+            await update.message.reply_text(message)
+            
+            # Отмечаем суперлайк как прочитанный
+            db.mark_superlike_read(from_user_id, update.message.from_user.id)
